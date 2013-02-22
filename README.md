@@ -52,10 +52,3 @@ $ wsvert2srilm.bash FILE
 
 This script creates files in sentence-per-line format, with tokens
 separated by whitespace.
-
-To do: 
-
-Add code to get the BNC into the format needed by SRILM:
-
-Instructions for running SRILM.
-
