@@ -51,12 +51,12 @@ splitting, tokenisation, and getting rid of sentences with really long
 tokens that seemed to trip up SRILM).
 
 The path to the stanford NLP tools is hardcodede in
-wsvert2srilm.bash. The path to Onion is hard-coded in
-runonion.bash. You'll (probably) need to fix those accordingly.
+`wsvert2srilm.bash`. The path to Onion is hard-coded in
+`runonion.bash`. You'll (probably) need to fix those accordingly.
 
 Then run 
 
-$ wsvert2srilm.bash FILE
+# wsvert2srilm.bash FILE
 
 This script creates files in sentence-per-line format, with tokens
 separated by whitespace.
