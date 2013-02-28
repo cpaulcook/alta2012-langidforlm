@@ -8,7 +8,10 @@ Paul Cook and Marco Lui. langid.py for better language modelling. In
 Proceedings of the Australasian Language Technology Association
 Workshop 2012 (ALTA 2012), pages 107–112. Dunedin, New Zealand.
 
-Requirements:
+The paper is available from:
+http://aclweb.org/anthology-new/U/U12/U12-1014.pdf
+
+Requirements
 ------------
 
 Jan Pomikalek's implementation of BTE: 
