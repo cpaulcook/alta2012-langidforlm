@@ -1,10 +1,15 @@
-Code to build corpora for the following paper.
+Code accompanying alta2012-langidforlm
+==============================================
+
+This repository contains code to reproduce experiments from the
+following paper:
 
 Paul Cook and Marco Lui. langid.py for better language modelling. In
 Proceedings of the Australasian Language Technology Association
 Workshop 2012 (ALTA 2012), pages 107–112. Dunedin, New Zealand.
 
 Requirements:
+------------
 
 Jan Pomikalek's implementation of BTE: 
 http://nlp.fi.muni.cz/~xpomikal/cleaneval/bte-3.0/bte.py
@@ -17,10 +22,13 @@ StanfordNLP tools: http://www-nlp.stanford.edu/
 
 ClueWeb09: http://www.lemurproject.org/clueweb09/
 
+
+Building ClueWeb corpora
+------------------------
 To build the ClueWeb corpora, first create a file containing the paths
 to the first 100 files in English ClueWeb. Then run 
 
-$ python extractvertcorporaforlangidexps.py FILE_OF_CLUEWEB_FILENAMES
+# python extractvertcorporaforlangidexps.py FILE_OF_CLUEWEB_FILENAMES
 
 (This takes a while...)
 
