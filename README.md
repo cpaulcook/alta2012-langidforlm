@@ -27,9 +27,6 @@ ClueWeb09: http://www.lemurproject.org/clueweb09/
 
 SRILM: http://www.speech.sri.com/projects/srilm/
 
-GNU Parallel: http://www.gnu.org/software/parallel/
-
-
 Building ClueWeb corpora
 ========================
 To build the ClueWeb corpora, first create a file containing the paths
@@ -78,72 +75,40 @@ Token counts
 
 The corpora are large enough such that ``ngram-count`` will not be able to operate
 on the whole corpus at once, so we split the corpora up, and then use srilm's 
-make-batch-counts and merge-batch-counts. 
+make-batch-counts and merge-batch-counts. Below is a rough guide on how
+to do this, for more details see the SRILM documentation
 
-We split each file into lines of 1000000 lines:
+    # split each file into lines of 1000000 lines:
+    mkdir FILE.split; split -l 1000000 FILE FILE.split/part.
 
-    mkdir 00-99.all.split; split -l 1000000 ../data/clueweblangid_corpora/00-99.all.srilm 00-99.all.split/00-99.all.
-    mkdir 00-99.en.split; split -l 1000000 ../data/clueweblangid_corpora/00-99.en.srilm 00-99.en.split/00-99.en.
-
-We then do the counting using make-batch-counts:
-
-    mkdir 00-99.all.counts; make-batch-counts <(find 00-99.all.split -type f) 10 /bin/cat 00-99.all.counts
-    mkdir 00-99.en.counts; make-batch-counts <(find 00-99.en.split -type f) 10 /bin/cat 00-99.en.counts
+    # do counting for each part using make-batch-counts:
+    mkdir FILE.counts; make-batch-counts <(find FILE.split -type f) 10 /bin/cat FILE.counts
  
-We then merge them:
-
-    merge-batch-counts 00-99.all.counts
-    merge-batch-counts 00-99.en.counts
+    # merge counts
+    merge-batch-counts FILE.counts
  
-Build lms using ``make-big-lm``:
+    # build lms using `make-big-lm`
+    make-big-lm -name FILE.model -read FILE.counts -unk -lm FILE.lm
+    
+    # compute perplexity
+    ngram -ppl TARGET -unk -lm FILE.lm
 
-    find . -name '*.count' | parallel -j1 "make-big-lm -name {/.}.model -read {} -unk -lm {/.}.defaults.lm"
-    find -L . -maxdepth 1 -type f -name '*.gz' |  parallel -j1 "make-big-lm -name {/.}.model -read {} -unk -lm {/.}.defaults.lm"
-
-Run all the lms against brown:
-
-    find . -maxdepth 1 -type f  -name '*.lm' | parallel -j1 "echo {};ngram -ppl ../data/clueweblangid_corpora/brown.srilm -unk -lm {};echo {}"
-    find . -maxdepth 1 -type f  -name '*.lm' | parallel -j1 "echo {};ngram -ppl ../data/clueweblangid_corpora/bnc.written.srilm -unk -lm {};echo " > bnc.written.ppl
-    ./run_lms.sh
-
-Low-order language models
--------------------------
-Build lower-order LMS:
-
-    find -L . -maxdepth 1 -type f -name '00.*.count.gz' |  parallel -j2 "make-big-lm -name {/.}.model -read {} -unk -order 2 -lm {/.}.order2.lm"
-    find -L . -maxdepth 1 -type f -name '00.*.count.gz' |  parallel -j2 "make-big-lm -name {/.}.model -read {} -unk -order 1 -lm {/.}.order1.lm"
-
-Apply the lower-order LMS to bnc:
-
-    parallel -j1 "echo {};ngram -ppl ../data/clueweblangid_corpora/bnc.written.srilm -unk -order 2 -lm {};echo " :: *order2* > bnc.written.order2.ppl
-    parallel -j1 "echo {};ngram -ppl ../data/clueweblangid_corpora/bnc.written.srilm -unk -order 1 -lm {};echo " :: *order1* > bnc.written.order1.ppl
+In the included file ``run_lms.sh`` is our code for computing the perplexity
+on each target data using each of the language models we trained. ``LMout2csv.py``
+parses the SRILM stdout into a csv format more amenable to further analysis.
 
 Sentence-level perplexity
 -------------------------
-Run all the web LMS against bnc.written.delim:
+We do calculations of perplexity at a sentence level as well. To do this using SRILM,
+the approach is as follows:
 
-    parallel "ngram -escape STARTDOC -ppl ../data/clueweblangid_corpora/bnc.written.delim.srilm -unk -lm {} > sentppl/{/.}.sentppl" :: 00*.defaults.lm
+    ngram -escape STARTDOC -ppl EVAL_DATA -unk -lm FILE.lm > EVAL_DATA.FILE_lm.sentppl
 
-Tabulate all the sentence-level ppls:
+We include ``sentppl.py``, a script to parse the raw STDOUT of the above type of
+SRILM command and produce a CSV format.
 
-    find sentppl -name '*.sentppl' | parallel "python sentppl.py {} > {.}.csv"
+Finally, we compare the per-sentence perplexity of two LMs, computing a p-value
+using a t-test as well as a Wilcoxon signed-rank test. We provide a script
+``comparesentppl.py`` to carry out this process, which again produces a CSV-format
+output.
 
-Compute all p-values pairwise:
-
-    parallel --xapply python comparesentppl.py {1} {2} :: <(ls sentppl/*all*.csv) <(ls sentppl/*en*.csv) > significance.csv
-
-Multiple-small LM
------------------
-Compute counts for each file:
-
-    find -L ../data/clueweblangid_corpora -name '*.srilm' | parallel "if [ ! -e {/.}.count.gz ];then ngram-count -text {} -write {/.}.count;gzip {/.}.count;fi"
-
-Build the LMS:
-
-    parallel echo 0{2}.{1}.count.gz :: all en :: <(seq 1 9) | parallel -j8 "make-big-lm -name {/.}.model -read {} -unk -lm {/.}.defaults.lm"
-
-Apply the LMS:
-
-    parallel echo 0{2}.{1}.count.defaults.lm :: all en :: <(seq 1 9) | parallel -j2 "echo {};ngram -ppl ../data/clueweblangid_corpora/bnc.written.srilm -unk -lm {};echo " > bnc.written.smallLM.ppl
-    parallel echo 0{2}.{1}.count.defaults.lm :: all en :: 0 | parallel -j2 "echo {};ngram -ppl ../data/clueweblangid_corpora/bnc.written.srilm -unk -lm {};echo " >> bnc.written.smallLM.ppl
-    python LMout2csv.py bnc.written.smallLM.ppl > bnc.written.smallLM.ppl.csv
